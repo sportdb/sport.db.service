@@ -5,7 +5,8 @@ sport.db HTTP JSON API (web service) scripts
 
 ## Usage
 
-You can run any of the scripts using the `sportdb` command line tool. By default the `serve` command will look for
+You can run any of the HTTP JSON API (web service) scripts using the `sportdb` command line tool. 
+By default the `serve` command will look for
 a script named `Service` or `service.rb` (in the working folder, that is, `./`). Example:
 
 ```
