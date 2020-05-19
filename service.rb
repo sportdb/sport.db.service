@@ -1,5 +1,6 @@
 
-get '/rounds/:q' do |q|
+get '/rounds/:q' do
+  q = params[ 'q' ]
 
   #################
   # todo/check:
@@ -28,9 +29,9 @@ get '/rounds/:q' do |q|
   current_rounds.each do |r|
     rounds << { pos: r.pos,
                 title: r.title,
-                start_at: r.start_at.strftime('%Y/%m/%d'),
-                end_at:   r.end_at.strftime('%Y/%m/%d'),
-                event: { key:  r.event.key,
+                start_at: r.start_at ? r.start_at.strftime('%Y/%m/%d') : '?',
+                end_at:   r.end_at   ? r.end_at.strftime('%Y/%m/%d')   : '?',
+                event: { key:   r.event.key,
                          title: r.event.title }}
   end
 
@@ -39,42 +40,55 @@ get '/rounds/:q' do |q|
 end
 
 
-get '/event/:key/teams' do |key|
-  # NB: change en.2012_13 to en.2012/13
-  event = Event.find_by_key!( key.tr('_', '/') )
+get '/event/:key/teams' do
+  key = params['key']
+
+  # note: change en.2012_13 to en.2012/13
+  event = Event.find_by!( key: key.tr('_', '/') )
 
   teams = []
   event.teams.each do |t|
     teams << { key: t.key, title: t.title, code: t.code }
   end
 
-  data = { event: { key: event.key, title: event.title }, teams: teams }
+  data = { event: { key:   event.key,
+                    title: event.title },
+           teams: teams }
   data
 end
 
 
-get '/event/:key/rounds' do |key|
-  # NB: change en.2012_13 to en.2012/13
-  event = Event.find_by_key!( key.tr('_', '/') )
+get '/event/:key/rounds' do
+  key = params['key']
+
+  # note: change en.2012_13 to en.2012/13
+  event = Event.find_by!( key: key.tr('_', '/') )
 
   rounds = []
   event.rounds.each do |r|
-    rounds << { pos: r.pos, title: r.title,
-                start_at: r.start_at.strftime('%Y/%m/%d'),
-                end_at:   r.end_at.strftime('%Y/%m/%d') }
+    rounds << { pos: r.pos,
+                title: r.title,
+                start_at: r.start_at ? r.start_at.strftime('%Y/%m/%d') : '?',
+                end_at:   r.end_at   ? r.end_at.strftime('%Y/%m/%d')   : '?'}
   end
 
-  data = { event: { key: event.key, title: event.title }, rounds: rounds }
+  data = { event: { key: event.key,
+                    title: event.title },
+           rounds: rounds }
   data
 end
 
 
-get '/event/:key/round/:pos' do |key,pos|
-  # NB: change en.2012_13 to en.2012/13
-  event = Event.find_by_key!( key.tr('_', '/') )
+get '/event/:key/round/:pos' do
+  key = params[ 'key' ]
+  pos = params[ 'pos' ]
+
+  # note: change en.2012_13 to en.2012/13
+  event = Event.find_by!( key: key.tr('_', '/') )
 
   if pos =~ /\d+/
-    round = Round.find_by_event_id_and_pos!( event.id, pos )
+    round = Round.find_by!( event_id: event.id,
+                            pos:      pos )
   else  # assume last from today's date (use last/today/etc. - must be non-numeric key)
     t_23_59 = Time.now.end_of_day
     round = Round.where( event_id: event.id ).where( 'start_at <= ?', t_23_59 ).order( 'pos' ).last
@@ -87,7 +101,7 @@ get '/event/:key/round/:pos' do |key,pos|
   round.games.each do |g|
     games << { team1_key: g.team1.key, team1_title: g.team1.title, team1_code: g.team1.code,
                team2_key: g.team2.key, team2_title: g.team2.title, team2_code: g.team2.code,
-               play_at: g.play_at.strftime('%Y/%m/%d'),
+               play_at: g.play_at ? g.play_at.strftime('%Y/%m/%d') : '?',
                score1:   g.score1,   score2:   g.score2,
                score1ot: g.score1ot, score2ot: g.score2ot,
                score1p:  g.score1p,  score2p:  g.score2p
@@ -96,10 +110,11 @@ get '/event/:key/round/:pos' do |key,pos|
 
   data = { event: { key: event.key, title: event.title },
            round: { pos: round.pos, title: round.title,
-                    start_at: round.start_at.strftime('%Y/%m/%d'),
-                    end_at:   round.end_at.strftime('%Y/%m/%d')
+                    start_at: round.start_at ? round.start_at.strftime('%Y/%m/%d') : '?',
+                    end_at:   round.end_at   ? round.end_at.strftime('%Y/%m/%d')   : '?'
                   },
            games: games }
 
   data
 end
+
