@@ -12,27 +12,21 @@ get '/rounds/:q' do
   rounds = []
 
   if q =~ /(\d{1,2})\.(\d{1,2})\.(\d{4})/
-    t = Time.new( $3.to_i, $2.to_i, $1.to_i )
+    d = Date.new( $3.to_i, $2.to_i, $1.to_i )
   elsif q =~ /(\d{4})\.(\d{1,2})\.(\d{1,2})/
-    t = Time.new( $1.to_i, $2.to_i, $3.to_i )
+    d = Date.new( $1.to_i, $2.to_i, $3.to_i )
   else
-    t = Time.now   # no match - assume today's/current date
+    d = Date.today   # no match - assume today's/current date
   end
 
-  t_00_00 = t.beginning_of_day
-  t_23_59 = t.end_of_day
-
-  ## NB: sqlite stores time too
-  #   use 00_00 and 23_59 to make sure queries work with hours too
-
-  current_rounds = Round.where( 'start_at <= ? and end_at >= ?', t_23_59, t_00_00 )
+  current_rounds = Round.where( 'start_date <= ? and end_date >= ?', d, d )
   current_rounds.each do |r|
-    rounds << { pos: r.pos,
-                title: r.title,
-                start_at: r.start_at ? r.start_at.strftime('%Y/%m/%d') : '?',
-                end_at:   r.end_at   ? r.end_at.strftime('%Y/%m/%d')   : '?',
+    rounds << { pos:  r.pos,
+                name: r.name,
+                start_date: r.start_date ? r.start_date.strftime('%Y/%m/%d') : '?',
+                end_date:   r.end_date   ? r.end_date.strftime('%Y/%m/%d')   : '?',
                 event: { key:   r.event.key,
-                         title: r.event.title }}
+                         name:  r.event.name }}
   end
 
   data = { rounds: rounds }
@@ -48,11 +42,11 @@ get '/event/:key/teams' do
 
   teams = []
   event.teams.each do |t|
-    teams << { key: t.key, title: t.title, code: t.code }
+    teams << { key: t.key, name: t.name, code: t.code }
   end
 
   data = { event: { key:   event.key,
-                    title: event.title },
+                    name:  event.name },
            teams: teams }
   data
 end
@@ -67,13 +61,13 @@ get '/event/:key/rounds' do
   rounds = []
   event.rounds.each do |r|
     rounds << { pos: r.pos,
-                title: r.title,
-                start_at: r.start_at ? r.start_at.strftime('%Y/%m/%d') : '?',
-                end_at:   r.end_at   ? r.end_at.strftime('%Y/%m/%d')   : '?'}
+                name: r.name,
+                start_date: r.start_date ? r.start_date.strftime('%Y/%m/%d') : '?',
+                end_date:   r.end_date   ? r.end_date.strftime('%Y/%m/%d')   : '?'}
   end
 
   data = { event: { key: event.key,
-                    title: event.title },
+                    name: event.name },
            rounds: rounds }
   data
 end
@@ -90,30 +84,30 @@ get '/event/:key/round/:pos' do
     round = Round.find_by!( event_id: event.id,
                             pos:      pos )
   else  # assume last from today's date (use last/today/etc. - must be non-numeric key)
-    t_23_59 = Time.now.end_of_day
-    round = Round.where( event_id: event.id ).where( 'start_at <= ?', t_23_59 ).order( 'pos' ).last
+    d = Date.today
+    round = Round.where( event_id: event.id ).where( 'start_date <= ?', d ).order( 'pos' ).last
     if round.nil?   # assume all rounds in the future; display first upcoming one
       round = Round.where( event_id: event.id ).order('pos').first
     end
   end
 
-  games = []
-  round.games.each do |g|
-    games << { team1_key: g.team1.key, team1_title: g.team1.title, team1_code: g.team1.code,
-               team2_key: g.team2.key, team2_title: g.team2.title, team2_code: g.team2.code,
-               play_at: g.play_at ? g.play_at.strftime('%Y/%m/%d') : '?',
-               score1:   g.score1,   score2:   g.score2,
-               score1ot: g.score1ot, score2ot: g.score2ot,
-               score1p:  g.score1p,  score2p:  g.score2p
+  matches = []
+  round.matches.each do |m|
+    matches << { team1_key: m.team1.key, team1_name: m.team1.name, team1_code: m.team1.code,
+               team2_key: m.team2.key, team2_name: m.team2.name, team2_code: m.team2.code,
+               date: m.date ? m.date.strftime('%Y/%m/%d') : '?',
+               score1:   m.score1,   score2:   m.score2,
+               score1ot: m.score1ot, score2ot: m.score2ot,
+               score1p:  m.score1p,  score2p:  m.score2p
              }
   end
 
-  data = { event: { key: event.key, title: event.title },
-           round: { pos: round.pos, title: round.title,
-                    start_at: round.start_at ? round.start_at.strftime('%Y/%m/%d') : '?',
-                    end_at:   round.end_at   ? round.end_at.strftime('%Y/%m/%d')   : '?'
+  data = { event: { key: event.key, name: event.name },
+           round: { pos: round.pos, name: round.name,
+                    start_date: round.start_date ? round.start_date.strftime('%Y/%m/%d') : '?',
+                    end_date:   round.end_date   ? round.end_date.strftime('%Y/%m/%d')   : '?'
                   },
-           games: games }
+           matches: matches }
 
   data
 end
